@@ -58,7 +58,3 @@ export const SMTP_FROM = process.env.SMTP_FROM || process.env.SMTP_USER;
 export const BETTER_AUTH_SECRET = getEnvVariable('BETTER_AUTH_SECRET');
 export const BETTER_AUTH_URL = process.env.BETTER_AUTH_URL || `http://localhost:${PORT}`;
 export const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
-
-console.log('✅ Environment variables loaded successfully');
-console.log(`📍 Environment: ${NODE_ENV}`);
-console.log(`🚀 Port: ${PORT}`);

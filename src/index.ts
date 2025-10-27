@@ -16,6 +16,8 @@ import { errorMiddleware } from "./middlewares/errorMiddleware.js";
 import { rateLimit } from "express-rate-limit";
 import routes from "./routes/index.js";
 import { setupGracefulShutdown } from "./utils/gracefulShutdown.js";
+import { toNodeHandler } from "better-auth/node";
+import { auth } from "./helpers/auth/auth.js";
 
 /**
  * Initialize Express application with all middleware and routes
@@ -24,7 +26,27 @@ const initializeApp = async () => {
   // Initialize Express app
   const app = express();
 
-  // Security middleware - must be first
+  // CORS configuration - must be before Better Auth handler
+  app.use(
+    cors({
+      origin: (origin, callback) => {
+        // Allow requests with no origin (mobile apps, Postman, etc.)
+        if (!origin || ALLOWED_ORIGINS.includes(origin)) {
+          callback(null, true);
+        } else {
+          callback(new Error("Not allowed by CORS"));
+        }
+      },
+      methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+      allowedHeaders: ["Content-Type", "Authorization"],
+      credentials: true,
+    })
+  );
+
+
+  app.all("/api/auth/*", toNodeHandler(auth));
+
+  // Security middleware
   app.use(helmet());
 
   // Rate limiting middleware
@@ -44,26 +66,9 @@ const initializeApp = async () => {
   // Compression middleware - compress all responses
   app.use(compression());
 
-  // Body parsing middleware
+  // Body parsing middleware - AFTER Better Auth handler
   app.use(express.json({ limit: "10mb" }));
   app.use(express.urlencoded({ extended: true, limit: "10mb" }));
-
-  // CORS configuration
-  app.use(
-    cors({
-      origin: (origin, callback) => {
-        // Allow requests with no origin (mobile apps, Postman, etc.)
-        if (!origin || ALLOWED_ORIGINS.includes(origin)) {
-          callback(null, true);
-        } else {
-          callback(new Error("Not allowed by CORS"));
-        }
-      },
-      methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-      allowedHeaders: ["Content-Type", "Authorization"],
-      credentials: true,
-    })
-  );
 
   // Trust proxy - important for rate limiting behind reverse proxy
   if (NODE_ENV === "production") {
