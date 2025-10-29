@@ -1,5 +1,4 @@
 import { betterAuth } from "better-auth";
-import type { BetterAuthOptions } from "better-auth";
 import { mongodbAdapter } from "better-auth/adapters/mongodb";
 import mongoose from "mongoose";
 import { 
