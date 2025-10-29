@@ -51,7 +51,6 @@ export const createAuth = () => {
       enabled: false,
     },
   },
-  
   // Social Providers (OAuth)
   socialProviders: {
     github: {
