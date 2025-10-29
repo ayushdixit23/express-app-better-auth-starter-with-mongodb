@@ -1,8 +1,27 @@
 import { Router, Request, Response } from "express";
 import asyncHandler from "../middlewares/tryCatch.js";
 import { SuccessResponse, ErrorResponse } from "../middlewares/responseHandler.js";
+import { fromNodeHeaders } from "better-auth/node";
+import { auth } from "../lib/auth.js";
+import { authenticateUser } from "../middlewares/authMiddleware.js";
 
 const router = Router();
+
+/**
+ * Get current user session
+ * GET /api/me
+ */
+router.get("/me", asyncHandler(async (req: Request, res: Response) => {
+  const session = await auth.api.getSession({
+    headers: fromNodeHeaders(req.headers),
+  });
+  
+  if (!session) {
+    throw new ErrorResponse("No active session found", 401);
+  }
+  
+  return new SuccessResponse("Session retrieved successfully", session).send(res);
+}));
 
 /**
  * Sample data endpoint
@@ -165,6 +184,28 @@ router.get(
     };
 
     return new SuccessResponse("Statistics retrieved successfully", stats).send(res);
+  })
+);
+
+/**
+ * Protected route example - requires authentication
+ * GET /api/profile
+ */
+router.get(
+  "/profile",
+  authenticateUser,
+  asyncHandler(async (req: Request, res: Response) => {
+    // Access authenticated user data from req.user (set by authenticateUser middleware)
+    const user = (req as any).user;
+    
+    const profileData = {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      lastAccessed: new Date().toISOString()
+    };
+
+    return new SuccessResponse("Profile retrieved successfully", profileData).send(res);
   })
 );
 

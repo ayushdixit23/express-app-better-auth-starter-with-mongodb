@@ -17,7 +17,7 @@ import { rateLimit } from "express-rate-limit";
 import routes from "./routes/index.js";
 import { setupGracefulShutdown } from "./utils/gracefulShutdown.js";
 import { toNodeHandler } from "better-auth/node";
-import { auth } from "./helpers/auth/auth.js";
+import { auth } from "./lib/auth.js";
 
 /**
  * Initialize Express application with all middleware and routes
@@ -43,8 +43,8 @@ const initializeApp = async () => {
     })
   );
 
-
-  app.all("/api/auth/*", toNodeHandler(auth));
+  // Better Auth handler - Express v5 syntax
+  app.all("/api/auth/*splat", toNodeHandler(auth));
 
   // Security middleware
   app.use(helmet());

@@ -32,6 +32,7 @@ This Express.js application is designed to be a **complete backend solution** th
 - ✅ **TypeScript** for type safety and better developer experience
 - ✅ **Class-based response system** for consistent API responses
 - ✅ **Production-ready** with graceful shutdown and error handling
+- ✅ **Express v5** - Latest version with improved performance
 
 ### What Makes This Different?
 
@@ -48,12 +49,14 @@ This Express.js application is designed to be a **complete backend solution** th
 ### 🔐 Authentication & Authorization
 - **Better Auth** integration with MongoDB
 - Email/Password authentication
+- **Social OAuth Login** (GitHub & Google)
 - Email verification with custom templates
 - Password reset functionality
 - Two-Factor Authentication (2FA) with OTP
-- Session management
+- Session management with cookie caching
 - Authentication middleware
-- Secure cookie-based sessions
+- Secure cookie-based sessions (7-day expiry)
+- Automatic session refresh
 
 ### 🛡️ Security Features
 - **Helmet.js**: Secure HTTP headers
@@ -63,6 +66,9 @@ This Express.js application is designed to be a **complete backend solution** th
 - **Error Sanitization**: Prevents information leakage
 - **Environment Variables**: Sensitive data protection
 - **Session Security**: Secure session management
+- **Email Verification Enforcement**: Protected routes require verified emails
+- **Security Logging**: Authentication attempts tracking
+- **Detailed Error Messages**: User-friendly without exposing sensitive info
 
 ### 🏗️ Architecture & Code Quality
 - **TypeScript**: Full type safety
@@ -75,9 +81,11 @@ This Express.js application is designed to be a **complete backend solution** th
 
 ### 📊 Performance & Monitoring
 - **Compression**: HTTP response compression
+- **Cookie Caching**: Reduced database queries for sessions
 - **Request Logging**: Morgan logger with environment-based formats
 - **Health Checks**: Kubernetes/Docker ready endpoints
 - **Connection Pooling**: Optimized database connections
+- **Session Optimization**: Smart session refresh mechanism
 
 ---
 
@@ -85,13 +93,13 @@ This Express.js application is designed to be a **complete backend solution** th
 
 ### Core
 - **Node.js** - JavaScript runtime
-- **Express.js** v4.21+ - Web framework
+- **Express.js** v5.1+ - Web framework
 - **TypeScript** v5.7+ - Type safety
 - **MongoDB** - NoSQL database
-- **Mongoose** v8.9+ - MongoDB ODM
+- **Mongoose** v8.10+ - MongoDB ODM
 
 ### Authentication & Security
-- **Better Auth** v1.3+ - Modern authentication
+- **Better Auth** v1.3+ (latest) - Modern authentication ([Express Integration Guide](https://www.better-auth.com/docs/integrations/express))
 - **Helmet** v8.0+ - Security headers
 - **CORS** v2.8+ - Cross-origin resource sharing
 - **Express Rate Limit** v7.5+ - Rate limiting
@@ -214,11 +222,10 @@ Before you begin, ensure you have the following installed:
 express-app/
 ├── src/
 │   ├── helpers/                    # Helper functions and utilities
-│   │   ├── auth/
-│   │   │   └── auth.ts            # Better Auth configuration
 │   │   └── connectDb.ts            # MongoDB connection handler
 │   │
 │   ├── lib/                        # Library utilities
+│   │   ├── auth.ts                 # Better Auth configuration
 │   │   └── send-mail.ts            # Email sending service (Nodemailer)
 │   │
 │   ├── middlewares/                # Express middleware
@@ -253,11 +260,12 @@ express-app/
 | File | Purpose |
 |------|---------|
 | `src/index.ts` | Main application entry point, middleware setup |
-| `src/helpers/auth/auth.ts` | Better Auth configuration with 2FA, email verification |
-| `src/middlewares/authMiddleware.ts` | Protects routes, validates sessions |
+| `src/lib/auth.ts` | Better Auth configuration with 2FA, OAuth, email verification |
+| `src/lib/send-mail.ts` | Nodemailer email service for authentication emails |
+| `src/middlewares/authMiddleware.ts` | Protects routes, validates sessions, user authentication |
 | `src/middlewares/responseHandler.ts` | Standard API response classes |
 | `src/utils/envConfig.ts` | Environment variable validation and exports |
-| `src/lib/send-mail.ts` | Nodemailer email service |
+| `src/helpers/connectDb.ts` | MongoDB connection handler with retry logic |
 
 ---
 
@@ -305,7 +313,41 @@ Content-Type: application/json
 }
 ```
 
-#### 2. **Email Verification**
+#### 2. **Social Authentication (OAuth)** *(Optional)*
+
+Users can sign in using their GitHub or Google accounts.
+
+> **Note:** OAuth providers are optional. If you don't configure GitHub/Google credentials, email/password authentication will still work perfectly.
+
+**GitHub Sign In:**
+```bash
+GET /api/auth/sign-in/github
+```
+
+**Google Sign In:**
+```bash
+GET /api/auth/sign-in/google
+```
+
+**Callback URLs:**
+- GitHub: `http://localhost:5000/api/auth/callback/github`
+- Google: `http://localhost:5000/api/auth/callback/google`
+
+**Setup Instructions:**
+
+**GitHub OAuth Setup:**
+1. Go to [GitHub Developer Settings](https://github.com/settings/developers)
+2. Click "New OAuth App"
+3. Set **Authorization callback URL** to: `http://localhost:5000/api/auth/callback/github`
+4. Copy **Client ID** and **Client Secret** to your `.env` file
+
+**Google OAuth Setup:**
+1. Go to [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
+2. Create a new OAuth 2.0 Client ID
+3. Add **Authorized redirect URI**: `http://localhost:5000/api/auth/callback/google`
+4. Copy **Client ID** and **Client Secret** to your `.env` file
+
+#### 3. **Email Verification**
 
 Upon sign-up, users receive a verification email with a custom-styled template. The email includes:
 - Professional HTML design
@@ -395,28 +437,67 @@ Cookie: better-auth.session_token=<session-token>
 
 ### Authentication Middleware
 
-The `authMiddleware.ts` provides route protection:
+The `authMiddleware.ts` provides robust route protection with detailed error messages:
 
 ```typescript
 import { authenticateUser } from "./middlewares/authMiddleware.js";
 
-// Protect a route
+// Protect a route - requires authentication
 router.get("/profile", authenticateUser, async (req, res) => {
-  // req.user is now available
-  const userId = req.user.id;
-  const userEmail = req.user.email;
+  // req.user is now available with user data
+  const user = req.user;
   
   return new SuccessResponse("Profile retrieved", {
-    user: req.user
+    id: user.id,
+    email: user.email,
+    name: user.name
   }).send(res);
 });
 ```
 
-**What it does:**
-- Validates the session cookie
-- Extracts user information
-- Attaches user to `req.user`
-- Returns 401 if not authenticated
+**Features:**
+- ✅ **Email Verification Check** - Ensures users verify their email before accessing protected routes
+- ✅ **Detailed Error Messages** - User-friendly error responses for different scenarios
+- ✅ **Security Logging** - Tracks all authentication attempts with IP and path
+- ✅ **Multiple Error Scenarios** - Handles expired sessions, invalid tokens, missing credentials, etc.
+- ✅ **Smart Error Detection** - Specific messages for JWT errors, expired sessions, etc.
+
+**Error Messages:**
+- `"Authentication required. Please provide valid credentials."` (401)
+- `"Your session has expired or is invalid. Please sign in again."` (401)
+- `"Please verify your email address before accessing this resource."` (403)
+- `"Invalid authentication token. Please sign in again."` (401)
+- `"Session is invalid. Please sign in again."` (401)
+
+### Session & Cookie Configuration
+
+The application uses advanced cookie caching and session management for optimal performance and security:
+
+**Cookie Caching:**
+```typescript
+session: {
+  cookieCache: {
+    enabled: true,
+    maxAge: 5 * 60, // Cache for 5 minutes
+  },
+  expiresIn: 60 * 60 * 24 * 7, // Sessions last 7 days
+  updateAge: 60 * 60 * 24, // Update session every 24 hours
+}
+```
+
+**Security Features:**
+- ✅ **Cookie Caching** - Reduces database queries by caching session data
+- ✅ **Automatic Expiration** - Sessions expire after 7 days
+- ✅ **Session Refresh** - Sessions update every 24 hours for security
+- ✅ **Secure Cookies** - HTTPS-only in production
+- ✅ **HTTP-Only Cookies** - Not accessible via JavaScript (XSS protection)
+- ✅ **SameSite Protection** - CSRF attack prevention
+
+**Benefits:**
+1. **Performance** - Cookie caching reduces database load
+2. **Security** - Multiple layers of cookie protection
+3. **User Experience** - Users stay logged in for 7 days
+4. **Auto-refresh** - Sessions automatically renew
 
 ### Email Templates
 
@@ -448,6 +529,22 @@ rateLimit: {
   max: 100     // 100 requests max
 },
 
+// Session & Cookie Security
+session: {
+  cookieCache: {
+    enabled: true,
+    maxAge: 5 * 60, // 5 minutes cache
+  },
+  expiresIn: 60 * 60 * 24 * 7, // 7 days
+  updateAge: 60 * 60 * 24, // Refresh every 24 hours
+},
+
+// Cookie Settings
+advanced: {
+  useSecureCookies: true, // HTTPS only in production
+  cookiePrefix: "better-auth",
+},
+
 // Trusted origins for CORS
 trustedOrigins: [
   "http://localhost:3000",
@@ -457,12 +554,16 @@ trustedOrigins: [
 
 ### Better Auth Endpoints
 
-All Better Auth endpoints are automatically available at `/api/auth/*`:
+All Better Auth endpoints are automatically available at `/api/auth/*` (mounted at `/api/auth/*splat` for Express v5):
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `/api/auth/sign-up/email` | POST | Register new user |
 | `/api/auth/sign-in/email` | POST | Sign in with credentials |
+| `/api/auth/sign-in/github` | GET | Sign in with GitHub |
+| `/api/auth/sign-in/google` | GET | Sign in with Google |
+| `/api/auth/callback/github` | GET | GitHub OAuth callback |
+| `/api/auth/callback/google` | GET | Google OAuth callback |
 | `/api/auth/sign-out` | POST | Sign out user |
 | `/api/auth/get-session` | GET | Get current session |
 | `/api/auth/verify-email` | GET | Verify email address |
@@ -809,6 +910,8 @@ See [Authentication System](#-authentication-system-better-auth) section for det
 
 | Endpoint | Method | Description | Auth Required |
 |----------|--------|-------------|---------------|
+| `/api/me` | GET | Get current user session | Yes |
+| `/api/profile` | GET | Get authenticated user profile | Yes |
 | `/api/data` | GET | Get sample data | No |
 | `/api/query` | GET | Database query example | No |
 | `/api/users` | POST | Create user | No |
@@ -820,6 +923,22 @@ See [Authentication System](#-authentication-system-better-auth) section for det
 | `/api/error` | GET | Error handling demo | No |
 
 **Note:** These are example routes. Implement your own routes based on your application needs.
+
+#### Getting User Session
+
+As per [Better Auth Express Integration](https://www.better-auth.com/docs/integrations/express), you can retrieve the current user session using `fromNodeHeaders`:
+
+```typescript
+import { fromNodeHeaders } from "better-auth/node";
+import { auth } from "../lib/auth.js";
+
+router.get("/api/me", async (req, res) => {
+  const session = await auth.api.getSession({
+    headers: fromNodeHeaders(req.headers),
+  });
+  return res.json(session);
+});
+```
 
 ---
 
@@ -885,6 +1004,18 @@ BETTER_AUTH_URL=http://localhost:5000
 
 # Frontend URL (where your React/Vue/Next.js app runs)
 FRONTEND_URL=http://localhost:3000
+
+# ===================================
+# OAUTH PROVIDERS (GitHub & Google)
+# ===================================
+# OPTIONAL - Leave empty if you don't want to use OAuth
+# GitHub OAuth - Get from: https://github.com/settings/developers
+GITHUB_CLIENT_ID=
+GITHUB_CLIENT_SECRET=
+
+# Google OAuth - Get from: https://console.cloud.google.com/apis/credentials
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
 ```
 
 ### Gmail Setup for SMTP

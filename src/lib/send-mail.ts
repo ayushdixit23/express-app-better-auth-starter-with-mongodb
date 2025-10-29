@@ -4,9 +4,9 @@ import { SMTP_HOST, SMTP_PORT, SMTP_SECURE, SMTP_USER, SMTP_PASS, SMTP_FROM } fr
 // Create transporter for email sending
 const createTransporter = () => {
   return nodemailer.createTransport({
-    host: SMTP_HOST || 'smtp.gmail.com',
-    port: parseInt(SMTP_PORT || '587'),
-    secure: SMTP_SECURE === 'true',
+    host: SMTP_HOST,
+    port: SMTP_PORT,
+    secure: SMTP_SECURE,
     auth: {
       user: SMTP_USER,
       pass: SMTP_PASS,

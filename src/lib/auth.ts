@@ -1,8 +1,17 @@
 import { betterAuth } from "better-auth";
 import { mongodbAdapter } from "better-auth/adapters/mongodb";
 import mongoose from "mongoose";
-import { BETTER_AUTH_SECRET, BETTER_AUTH_URL, FRONTEND_URL } from "../../utils/envConfig.js";
-import { sendEmail } from "../../lib/send-mail.js";
+import { 
+  BETTER_AUTH_SECRET, 
+  BETTER_AUTH_URL, 
+  FRONTEND_URL,
+  GITHUB_CLIENT_ID,
+  GITHUB_CLIENT_SECRET,
+  GOOGLE_CLIENT_ID,
+  GOOGLE_CLIENT_SECRET,
+  NODE_ENV
+} from "../utils/envConfig.js";
+import { sendEmail } from "./send-mail.js";
 import { twoFactor } from "better-auth/plugins";
 
 const client = mongoose.connection.getClient();
@@ -13,6 +22,38 @@ export const auth = betterAuth({
   database: mongodbAdapter(db!, { client }),
   secret: BETTER_AUTH_SECRET,
   baseURL: BETTER_AUTH_URL,
+  
+  // Session & Cookie Configuration
+  session: {
+    cookieCache: {
+      enabled: true,
+      maxAge: 5 * 60, // Cache for 5 minutes (in seconds)
+    },
+    expiresIn: 60 * 60 * 24 * 7, // 7 days (in seconds)
+    updateAge: 60 * 60 * 24, // Update session every 24 hours (in seconds)
+  },
+  
+  // Advanced Cookie Settings
+  advanced: {
+    cookiePrefix: "better-auth",
+    useSecureCookies: NODE_ENV === "production",
+    crossSubDomainCookies: {
+      enabled: false,
+    },
+  },
+  
+  // Social Providers (OAuth)
+  socialProviders: {
+    github: {
+      clientId: GITHUB_CLIENT_ID,
+      clientSecret: GITHUB_CLIENT_SECRET,
+    },
+    google: {
+      clientId: GOOGLE_CLIENT_ID,
+      clientSecret: GOOGLE_CLIENT_SECRET,
+    },
+  },
+  
   plugins: [
     twoFactor({
       otpOptions: {
