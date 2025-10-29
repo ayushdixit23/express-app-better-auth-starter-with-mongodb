@@ -1,11 +1,10 @@
 import { Request, Response, NextFunction } from "express";
 import { fromNodeHeaders } from "better-auth/node";
-import { auth } from "../lib/auth.js";
+import { getAuth } from "../lib/auth.js";
 import { ErrorResponse } from "./responseHandler.js";
 
-
 /**
- * Middleware to authenticate user using Better Auth session
+ * Middleware to authenticate user using Better Auth session₹
  * Attaches user data to req.user if authenticated
  * 
  * @throws {ErrorResponse} 401 - If authentication fails
@@ -28,6 +27,7 @@ export const authenticateUser = async (
     }
 
     // Get session from Better Auth
+    const auth = getAuth();
     const session = await auth.api.getSession({
       headers: fromNodeHeaders(req.headers),
     });
@@ -94,6 +94,7 @@ export const optionalAuth = async (
   next: NextFunction
 ): Promise<void> => {
   try {
+    const auth = getAuth();
     const session = await auth.api.getSession({
       headers: fromNodeHeaders(req.headers),
     });

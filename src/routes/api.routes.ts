@@ -2,7 +2,7 @@ import { Router, Request, Response } from "express";
 import asyncHandler from "../middlewares/tryCatch.js";
 import { SuccessResponse, ErrorResponse } from "../middlewares/responseHandler.js";
 import { fromNodeHeaders } from "better-auth/node";
-import { auth } from "../lib/auth.js";
+import { getAuth } from "../lib/auth.js";
 import { authenticateUser } from "../middlewares/authMiddleware.js";
 
 const router = Router();
@@ -12,6 +12,7 @@ const router = Router();
  * GET /api/me
  */
 router.get("/me", asyncHandler(async (req: Request, res: Response) => {
+  const auth = getAuth();
   const session = await auth.api.getSession({
     headers: fromNodeHeaders(req.headers),
   });

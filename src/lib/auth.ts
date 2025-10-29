@@ -1,4 +1,5 @@
 import { betterAuth } from "better-auth";
+import type { BetterAuthOptions } from "better-auth";
 import { mongodbAdapter } from "better-auth/adapters/mongodb";
 import mongoose from "mongoose";
 import { 
@@ -14,10 +15,19 @@ import {
 import { sendEmail } from "./send-mail.js";
 import { twoFactor } from "better-auth/plugins";
 
-const client = mongoose.connection.getClient();
-const db = mongoose.connection.db;
+// Cached auth instance
+let authInstance: ReturnType<typeof betterAuth> | null = null;
 
-export const auth = betterAuth({
+export const createAuth = () => {
+  // Return cached instance if it exists
+  if (authInstance) {
+    return authInstance;
+  }
+
+  const client = mongoose.connection.getClient();
+  const db = mongoose.connection.db;
+
+  authInstance = betterAuth({
   appName: "Express App",
   database: mongodbAdapter(db!, { client }),
   secret: BETTER_AUTH_SECRET,
@@ -202,4 +212,15 @@ export const auth = betterAuth({
       console.log(`✅ Password reset email sent to ${user.email}`);
     },
   },
-});
+  });
+
+  return authInstance;
+};
+
+// Export a getter function for use in middlewares
+export const getAuth = () => {
+  if (!authInstance) {
+    throw new Error("Auth instance not initialized. Call createAuth() first after database connection.");
+  }
+  return authInstance;
+};

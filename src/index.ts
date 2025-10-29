@@ -17,7 +17,7 @@ import { rateLimit } from "express-rate-limit";
 import routes from "./routes/index.js";
 import { setupGracefulShutdown } from "./utils/gracefulShutdown.js";
 import { toNodeHandler } from "better-auth/node";
-import { auth } from "./lib/auth.js";
+import { createAuth } from "./lib/auth.js";
 
 /**
  * Initialize Express application with all middleware and routes
@@ -25,6 +25,9 @@ import { auth } from "./lib/auth.js";
 const initializeApp = async () => {
   // Initialize Express app
   const app = express();
+
+  // Create auth instance after database connection is established
+  const auth = createAuth();
 
   // CORS configuration - must be before Better Auth handler
   app.use(
