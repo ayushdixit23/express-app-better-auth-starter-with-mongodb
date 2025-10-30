@@ -7,16 +7,13 @@ import { disconnectDb } from "../helpers/connectDb.js";
  */
 export const setupGracefulShutdown = (server: Server): void => {
   const shutdown = async (signal: string) => {
-    console.log(`\n⚠️  ${signal} received. Starting graceful shutdown...`);
+    
 
     // Stop accepting new connections
     server.close(async () => {
-      console.log("🔌 HTTP server closed");
-
       try {
         // Close database connection
         await disconnectDb();
-
         console.log("✅ All connections closed. Exiting process.");
         process.exit(0);
       } catch (error) {

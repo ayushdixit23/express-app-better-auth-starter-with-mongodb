@@ -92,7 +92,7 @@ export const createAuth = () => {
                 </div>
               `,
             });
-            console.log(`✅ 2FA code sent to ${user.email}`);
+            
           } catch (error) {
             console.error("❌ Failed to send OTP email:", error);
             throw error;
@@ -157,7 +157,7 @@ export const createAuth = () => {
           </div>
         `,
       });
-      console.log(`✅ Verification email sent to ${user.email}`);
+      
     },
     sendOnSignUp: true,
   },
@@ -207,7 +207,7 @@ export const createAuth = () => {
           </div>
         `,
       });
-      console.log(`✅ Password reset email sent to ${user.email}`);
+      
     },
   },
   });
