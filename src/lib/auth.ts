@@ -1,37 +1,31 @@
 import { betterAuth } from "better-auth";
 import { mongodbAdapter } from "better-auth/adapters/mongodb";
 import mongoose from "mongoose";
-import { 
-  BETTER_AUTH_SECRET, 
-  BETTER_AUTH_URL, 
+import {
+  BETTER_AUTH_SECRET,
+  BETTER_AUTH_URL,
   FRONTEND_URL,
   GITHUB_CLIENT_ID,
   GITHUB_CLIENT_SECRET,
   GOOGLE_CLIENT_ID,
   GOOGLE_CLIENT_SECRET,
+  MONGO_URI,
   NODE_ENV
 } from "../utils/envConfig.js";
 import { sendEmail } from "./send-mail.js";
 import { twoFactor } from "better-auth/plugins";
+import connectDb from "../helpers/connectDb.js";
 
-// Cached auth instance
-let authInstance: ReturnType<typeof betterAuth> | null = null;
+// Connect to MongoDB
+await connectDb(MONGO_URI)
 
-export const createAuth = () => {
-  // Return cached instance if it exists
-  if (authInstance) {
-    return authInstance;
-  }
 
-  const client = mongoose.connection.getClient();
-  const db = mongoose.connection.db;
-
-  authInstance = betterAuth({
+const auth = betterAuth({
   appName: "Express App",
-  database: mongodbAdapter(db!, { client }),
+  database: mongodbAdapter(mongoose.connection.db!, { client: mongoose.connection.getClient() }),
   secret: BETTER_AUTH_SECRET,
   baseURL: BETTER_AUTH_URL,
-  
+
   // Session & Cookie Configuration
   session: {
     cookieCache: {
@@ -41,7 +35,7 @@ export const createAuth = () => {
     expiresIn: 60 * 60 * 24 * 7, // 7 days (in seconds)
     updateAge: 60 * 60 * 24, // Update session every 24 hours (in seconds)
   },
-  
+
   // Advanced Cookie Settings
   advanced: {
     cookiePrefix: "better-auth",
@@ -61,7 +55,7 @@ export const createAuth = () => {
       clientSecret: GOOGLE_CLIENT_SECRET,
     },
   },
-  
+
   plugins: [
     twoFactor({
       otpOptions: {
@@ -92,7 +86,7 @@ export const createAuth = () => {
                 </div>
               `,
             });
-            
+
           } catch (error) {
             console.error("❌ Failed to send OTP email:", error);
             throw error;
@@ -123,7 +117,7 @@ export const createAuth = () => {
     sendVerificationEmail: async ({ user, url }) => {
       const verificationUrl = new URL(url);
       verificationUrl.searchParams.set("callbackURL", `${FRONTEND_URL}/email-verification`);
-      
+
       await sendEmail({
         sendTo: user.email,
         subject: "Verify your email address",
@@ -157,7 +151,7 @@ export const createAuth = () => {
           </div>
         `,
       });
-      
+
     },
     sendOnSignUp: true,
   },
@@ -173,7 +167,7 @@ export const createAuth = () => {
     sendResetPassword: async ({ user, url }) => {
       const resetUrl = new URL(url);
       resetUrl.searchParams.set("callbackURL", `${FRONTEND_URL}/reset-password`);
-      
+
       await sendEmail({
         sendTo: user.email,
         subject: "Reset your password",
@@ -207,18 +201,9 @@ export const createAuth = () => {
           </div>
         `,
       });
-      
+
     },
   },
-  });
+});
 
-  return authInstance;
-};
-
-// Export a getter function for use in middlewares
-export const getAuth = () => {
-  if (!authInstance) {
-    throw new Error("Auth instance not initialized. Call createAuth() first after database connection.");
-  }
-  return authInstance;
-};
+export default auth;

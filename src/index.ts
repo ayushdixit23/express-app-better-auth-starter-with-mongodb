@@ -2,7 +2,6 @@ import express, { Request, Response } from "express";
 import { 
   NODE_ENV, 
   PORT, 
-  MONGO_URI, 
   ALLOWED_ORIGINS,
   RATE_LIMIT_WINDOW_MS,
   RATE_LIMIT_MAX_REQUESTS
@@ -10,14 +9,13 @@ import {
 import morgan from "morgan";
 import cors from "cors";
 import helmet from "helmet";
-import connectDb from "./helpers/connectDb.js";
 import compression from "compression";
 import { errorMiddleware } from "./middlewares/errorMiddleware.js";
 import { rateLimit } from "express-rate-limit";
 import routes from "./routes/index.js";
 import { setupGracefulShutdown } from "./utils/gracefulShutdown.js";
 import { toNodeHandler } from "better-auth/node";
-import { createAuth } from "./lib/auth.js";
+import auth from "./lib/auth.js";
 
 /**
  * Initialize Express application with all middleware and routes
@@ -25,9 +23,6 @@ import { createAuth } from "./lib/auth.js";
 const initializeApp = async () => {
   // Initialize Express app
   const app = express();
-
-  // Create auth instance after database connection is established
-  const auth = createAuth();
 
   // CORS configuration - must be before Better Auth handler
   app.use(
@@ -112,9 +107,6 @@ const initializeApp = async () => {
 const startServer = async () => {
   try {
     console.log("🚀 Starting server...\n");
-
-    // Connect to MongoDB
-    await connectDb(MONGO_URI);
 
     // Initialize Express app
     const app = await initializeApp();

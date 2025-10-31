@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { fromNodeHeaders } from "better-auth/node";
-import { getAuth } from "../lib/auth.js";
+import auth from "../lib/auth.js";
 import { ErrorResponse } from "./responseHandler.js";
 
 /**
@@ -27,7 +27,6 @@ export const authenticateUser = async (
     }
 
     // Get session from Better Auth
-    const auth = getAuth();
     const session = await auth.api.getSession({
       headers: fromNodeHeaders(req.headers),
     });
@@ -93,14 +92,13 @@ export const optionalAuth = async (
   res: Response,
   next: NextFunction
 ): Promise<void> => {
-  try {
-    const auth = getAuth();
+  try {   
     const session = await auth.api.getSession({
       headers: fromNodeHeaders(req.headers),
     });
 
     if (session?.user) {
-      (req as any).user = {
+      (req as any).user =   {
         id: session.user.id,
         email: session.user.email,
         name: session.user.name || null,
