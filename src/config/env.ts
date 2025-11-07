@@ -48,3 +48,4 @@ export const GITHUB_CLIENT_ID = getEnvVariable('GITHUB_CLIENT_ID', '');
 export const GITHUB_CLIENT_SECRET = getEnvVariable('GITHUB_CLIENT_SECRET', '');
 export const GOOGLE_CLIENT_ID = getEnvVariable('GOOGLE_CLIENT_ID', '');
 export const GOOGLE_CLIENT_SECRET = getEnvVariable('GOOGLE_CLIENT_SECRET', '');
+
