@@ -221,51 +221,55 @@ Before you begin, ensure you have the following installed:
 ```
 express-app/
 ├── src/
-│   ├── helpers/                    # Helper functions and utilities
-│   │   └── connectDb.ts            # MongoDB connection handler
+│   ├── app.ts                      # Express application setup (middleware, routes)
+│   ├── index.ts                    # Application entry point (server startup)
+│   │
+│   ├── config/                     # Configuration files
+│   │   ├── database.ts             # MongoDB connection handler
+│   │   └── env.ts                  # Environment variable validation and exports
 │   │
 │   ├── lib/                        # Library utilities
 │   │   ├── auth.ts                 # Better Auth configuration
+│   │   ├── email-templates.ts      # Email HTML templates (2FA, verification, reset)
 │   │   └── send-mail.ts            # Email sending service (Nodemailer)
 │   │
-│   ├── middlewares/                # Express middleware
+│   ├── middlewares/                 # Express middleware
 │   │   ├── authMiddleware.ts       # Authentication middleware
 │   │   ├── errorMiddleware.ts      # Centralized error handling
 │   │   ├── responseHandler.ts      # Success & Error response classes
 │   │   └── tryCatch.ts             # Async error wrapper
 │   │
-│   ├── routes/                     # Route definitions
+│   ├── routes/                      # Route definitions
 │   │   ├── index.ts                # Main router (mounts all routes)
 │   │   ├── api.routes.ts           # Public API routes
 │   │   └── health.routes.ts        # Health check endpoints
 │   │
-│   ├── utils/                      # Utility functions
-│   │   ├── envConfig.ts            # Environment variable validation
-│   │   └── gracefulShutdown.ts     # Graceful shutdown handler
-│   │
-│   └── index.ts                    # Application entry point
+│   └── utils/                       # Utility functions
+│       └── gracefulShutdown.ts     # Graceful shutdown handler
 │
-├── dist/                           # Compiled JavaScript (generated)
-├── node_modules/                   # Dependencies
-├── .env                            # Environment variables (not in git)
-├── env.example                     # Environment template
-├── .gitignore                      # Git ignore rules
-├── package.json                    # Project dependencies
-├── tsconfig.json                   # TypeScript configuration
-└── README.md                       # This file
+├── dist/                            # Compiled JavaScript (generated)
+├── node_modules/                    # Dependencies
+├── .env                             # Environment variables (not in git)
+├── env.example                      # Environment template
+├── .gitignore                       # Git ignore rules
+├── package.json                     # Project dependencies
+├── tsconfig.json                    # TypeScript configuration
 ```
 
 ### Key Files Explained
 
 | File | Purpose |
 |------|---------|
-| `src/index.ts` | Main application entry point, middleware setup |
+| `src/index.ts` | Application entry point - initializes app and starts server |
+| `src/app.ts` | Express application setup - middleware configuration and route mounting |
+| `src/config/env.ts` | Environment variable validation and configuration exports |
+| `src/config/database.ts` | MongoDB connection handler with event listeners |
 | `src/lib/auth.ts` | Better Auth configuration with 2FA, OAuth, email verification |
-| `src/lib/send-mail.ts` | Nodemailer email service for authentication emails |
+| `src/lib/email-templates.ts` | Modular HTML email templates for authentication emails |
+| `src/lib/send-mail.ts` | Nodemailer email service for sending authentication emails |
 | `src/middlewares/authMiddleware.ts` | Protects routes, validates sessions, user authentication |
-| `src/middlewares/responseHandler.ts` | Standard API response classes |
-| `src/utils/envConfig.ts` | Environment variable validation and exports |
-| `src/helpers/connectDb.ts` | MongoDB connection handler with retry logic |
+| `src/middlewares/responseHandler.ts` | Standard API response classes (SuccessResponse, ErrorResponse) |
+| `src/utils/gracefulShutdown.ts` | Graceful shutdown handler for proper cleanup |
 
 ---
 
@@ -1043,18 +1047,17 @@ To use Gmail for sending emails:
 The application validates required environment variables on startup:
 
 ```typescript
-// src/utils/envConfig.ts
-function getEnvVariable(key: string): string {
-  const value = process.env[key];
+// src/config/env.ts
+function getEnvVariable(key: string, defaultValue: string = ""): string {
+  const value = process.env[key] || defaultValue;
   if (!value) {
-    console.error(`❌ Missing required environment variable: ${key}`);
-    process.exit(1);
+    throw new Error(`Environment variable ${key} is required but not defined`);
   }
   return value;
 }
 
 // Required variables
-export const MONGO_URI = getEnvVariable('MONGO_URI');
+export const MONGO_URI = getEnvVariable('MONGO_URI', 'mongodb://localhost:27017/your-database-name');
 export const BETTER_AUTH_SECRET = getEnvVariable('BETTER_AUTH_SECRET');
 ```
 

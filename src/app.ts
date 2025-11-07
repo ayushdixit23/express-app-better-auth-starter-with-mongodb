@@ -23,7 +23,11 @@ export const createApp = async (): Promise<express.Application> => {
   // Initialize Express app
   const app = express();
 
-  // CORS configuration - must be before Better Auth handler
+  // Trust proxy - MUST be set early for correct IP detection in rate limiting
+  if (NODE_ENV === "production") {
+    app.set("trust proxy", 1);
+  }
+
   app.use(
     cors({
       origin: (origin, callback) => {
@@ -40,13 +44,17 @@ export const createApp = async (): Promise<express.Application> => {
     })
   );
 
-  // Better Auth handler - Express v5 syntax
-  app.all("/api/auth/*splat", toNodeHandler(auth));
+  // Logging middleware - must be before Better Auth handler to log auth requests
+  const logFormat = NODE_ENV === "development" ? "dev" : "combined";
+  app.use(morgan(logFormat));
 
   // Security middleware
   app.use(helmet());
 
-  // Rate limiting middleware
+  // Compression middleware - compress all responses
+  app.use(compression());
+
+  // Rate limiting middleware - after trust proxy for correct IP detection
   const limiter = rateLimit({
     windowMs: RATE_LIMIT_WINDOW_MS,
     limit: RATE_LIMIT_MAX_REQUESTS,
@@ -54,23 +62,14 @@ export const createApp = async (): Promise<express.Application> => {
     legacyHeaders: false,
     message: "Too many requests from this IP, please try again later.",
   });
+
   app.use(limiter);
 
-  // Logging based on environment (development/production)
-  const logFormat = NODE_ENV === "development" ? "dev" : "combined";
-  app.use(morgan(logFormat));
+  // Better Auth handler
+  app.all("/api/auth/*splat", toNodeHandler(auth));
 
-  // Compression middleware - compress all responses
-  app.use(compression());
-
-  // Body parsing middleware - AFTER Better Auth handler
   app.use(express.json({ limit: "10mb" }));
   app.use(express.urlencoded({ extended: true, limit: "10mb" }));
-
-  // Trust proxy - important for rate limiting behind reverse proxy
-  if (NODE_ENV === "production") {
-    app.set("trust proxy", 1);
-  }
 
   // Root route
   app.get("/", (_req: Request, res: Response) => {
